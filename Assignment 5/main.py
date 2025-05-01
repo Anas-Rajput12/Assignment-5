@@ -3,7 +3,7 @@ import hashlib
 import json
 import os
 import time
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet  # ✅ Corrected import
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
@@ -11,18 +11,18 @@ import base64
 
 # Constants
 DATA_FILE = "secure_data.json"
-MASTER_PASSWORD = "admin123"  # Demo purpose only, can be improved
+MASTER_PASSWORD = "admin123"  # For demo purposes only
 LOCKOUT_TIME = 60  # seconds after 3 failed attempts
-SALT = b'some_salt_'  # Normally, a random salt per user is better
+SALT = b'some_salt_'  # For demo; a unique per-user salt is more secure
 
-# Load or initialize storage
+# Load or initialize stored data
 if os.path.exists(DATA_FILE):
     with open(DATA_FILE, "r") as f:
         stored_data = json.load(f)
 else:
     stored_data = {}  # Format: {username: {entry_id: {encrypted_text, hashed_passkey}}}
 
-# Session State variables
+# Session state initialization
 if 'failed_attempts' not in st.session_state:
     st.session_state.failed_attempts = 0
 if 'lockout_until' not in st.session_state:
@@ -30,7 +30,7 @@ if 'lockout_until' not in st.session_state:
 if 'authorized' not in st.session_state:
     st.session_state.authorized = True
 
-# Key generation for Fernet
+# Generate Fernet key from passkey
 def generate_fernet_key(passkey):
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
@@ -41,12 +41,12 @@ def generate_fernet_key(passkey):
     )
     return base64.urlsafe_b64encode(kdf.derive(passkey.encode()))
 
-# Function to encrypt data
+# Encrypt text using Fernet
 def encrypt_data(text, passkey):
     cipher = Fernet(generate_fernet_key(passkey))
     return cipher.encrypt(text.encode()).decode()
 
-# Function to decrypt data
+# Decrypt text using Fernet
 def decrypt_data(encrypted_text, passkey):
     try:
         cipher = Fernet(generate_fernet_key(passkey))
@@ -54,7 +54,7 @@ def decrypt_data(encrypted_text, passkey):
     except:
         return None
 
-# Save data to JSON
+# Save current data to file
 def save_data():
     with open(DATA_FILE, "w") as f:
         json.dump(stored_data, f, indent=4)
@@ -62,7 +62,7 @@ def save_data():
 # UI Title
 st.title("🛡️ Secure Data Encryption System")
 
-# Lockout Management
+# Lockout logic
 if st.session_state.lockout_until:
     if time.time() < st.session_state.lockout_until:
         st.error(f"🚫 Locked out due to multiple failed attempts. Try again after {int(st.session_state.lockout_until - time.time())} seconds.")
@@ -71,14 +71,16 @@ if st.session_state.lockout_until:
         st.session_state.failed_attempts = 0
         st.session_state.lockout_until = None
 
-# Navigation
+# Sidebar Navigation
 menu = ["Home", "Store Data", "Retrieve Data", "Login"]
 choice = st.sidebar.selectbox("Navigation", menu)
 
+# Home Page
 if choice == "Home":
     st.subheader("🏡 Welcome!")
     st.write("🔐 This system allows **secure storage and retrieval** of your data using **passkeys**.")
 
+# Store Data Page
 elif choice == "Store Data":
     st.subheader("📥 Store Your Data")
     username = st.text_input("Enter Username:")
@@ -93,12 +95,16 @@ elif choice == "Store Data":
             if username not in stored_data:
                 stored_data[username] = {}
 
-            stored_data[username][encrypted_text] = {"encrypted_text": encrypted_text, "passkey": hashed_passkey}
+            stored_data[username][encrypted_text] = {
+                "encrypted_text": encrypted_text,
+                "passkey": hashed_passkey
+            }
             save_data()
             st.success("✅ Data encrypted and stored successfully!")
         else:
             st.error("⚠️ All fields are required!")
 
+# Retrieve Data Page
 elif choice == "Retrieve Data":
     st.subheader("🔎 Retrieve Your Data")
     username = st.text_input("Enter Username:")
@@ -134,6 +140,7 @@ elif choice == "Retrieve Data":
         else:
             st.error("⚠️ All fields are required!")
 
+# Admin Login Page
 elif choice == "Login":
     st.subheader("🔐 Admin Login Required")
     login_pass = st.text_input("Enter Master Password:", type="password")
@@ -146,4 +153,3 @@ elif choice == "Login":
             st.experimental_rerun()
         else:
             st.error("❌ Incorrect Master Password.")
-
