@@ -3,7 +3,7 @@ import hashlib
 import json
 import os
 import time
-from cryptography.fernet import Fernet  # ✅ Corrected import
+from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
@@ -51,7 +51,8 @@ def decrypt_data(encrypted_text, passkey):
     try:
         cipher = Fernet(generate_fernet_key(passkey))
         return cipher.decrypt(encrypted_text.encode()).decode()
-    except:
+    except Exception as e:
+        st.error(f"❌ Decryption failed: {e}")
         return None
 
 # Save current data to file
@@ -89,9 +90,11 @@ elif choice == "Store Data":
 
     if st.button("Encrypt & Save"):
         if username and user_data and passkey:
+            # Encrypt data
             encrypted_text = encrypt_data(user_data, passkey)
             hashed_passkey = hashlib.pbkdf2_hmac('sha256', passkey.encode(), SALT, 100000).hex()
 
+            # Store data
             if username not in stored_data:
                 stored_data[username] = {}
 
